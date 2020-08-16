@@ -1,0 +1,187 @@
+<html>
+<body>
+<h1> A Tour of the World </h1>
+There's nothing like being quarantined that makes you want to explore the world. But we'll have to settle for exploring some math instead.
+<br>
+Initially, I wanted to get better familiar with geography by reading a book about some topic relating to every country in the world. I think it probably says something about my knowledge of geography that I was surprised by how many countries there were and became a bit more uncomfortable with the task that I set myself.
+<br>
+An interesting question came out of this thought though: if you were going to read a book about every country in the world, what order would you read them in?
+<br>
+It seems natural that you would want books that you read back to back to not be totally different, and it would probably be better if you read books one geographic area at a time. That might lead you to want to order the books so that subsequent books are from neighboring countries.
+<br>
+This would also make it a bit more like taking a tour of the world; imagine starting off in South Africa, and then wandering around, visiting countries on foot one by one until you reached Norway, or something. But, instead of physcially travelling, you just move from book to book (yeah, this sounds like an afterschool special about your local library). This technical problem turns out to be pretty interesting, and has a number of extensions which are important.
+<br>
+Before even getting started with this idea, there are difficulties even in defining what a country is, and it's questionable as to whether many of the borders drawn between countries (many of which are fairly recent) are really valuable in isolating interesting historical features.
+<br>
+Luckily, none of these difficulties really matter, because Wolfram Mathematica (TM) is packaged with its own definition of what a country is, and I don't really feel like doing my own research to figure out which countries border each other (again, not very good at geography). So, the most of this will make me sound like a Wolfram shill, but to be fair, they did make it pretty easy to do quite a few interesting things.
+<br>
+In Mathematica, the incantation to summon the list of all countries in the world and which countries they border is
+<br>
+data = EntityValue["Country", "BorderingCountries", "EntityAssociation"];
+<br>
+This is how we'll start off.
+<br>
+
+<br>
+<h1> Graphs and Hamiltonian Paths </h1>
+<br>
+
+We have a list of countries, some of which border each other. The natural way to model this information is as a graph, where each country is a vertex, and an edge is drawn between each pair of neighboring countries.
+<br>
+In Mathematica, we can perform some further incantations to produce the graph that represents this picture:
+<br>
+vertices = Keys[data];
+edges = UndirectedEdge @@@ Flatten[Thread /@ Normal[data]];
+graph = SimpleGraph[Graph[vertices, edges]];
+<br>
+And this produces the output
+WORLD_GRAPH
+<br>
+(Thanks to Stack exchange for showing me these dark magiks)
+<br>
+The most natural way to model a tour through all of the countries is the following: we want to list the countries in some order, and consecutive countries in the list should border one another. Ideally, we would also not repeat the same country twice, as that would take up a lot of extra time.
+<br>
+In graph theory, a list of this sort, going through all of the vertices in order without repeating is called a Hamiltonian path, because if you were to draw out the sequence of vertices that you go through, you would be drawing a path.
+<br>
+Some graphs have Hamiltonian paths, and others do not, and it is natural to ask at this point if the graph on countries has such a path.
+<br>
+Of course, we can see immediately that it does not: there is a whole ocean separating the Americas from the rest of the world, and there are dozens of island nations that cannot be reached via any land borders. This seems like a rather obvious roadblock though, and there are a few ways to get around it.
+<br>
+The one we'll be thinking about isjust saying that we'll deal with the Americas separately from Asia/Europe/Africa, and those separately from the island nations. In graph theory, these groups of countries are called 'connected components', and we might ask if each connected component separately has a Hamiltonian path.
+<br>
+In Mathematica, we can get the connected components by running
+<br>
+components = ConnectedComponents[graph];
+<br>
+And we see that there are 2 big components: the Americas and Europe/Asia/Africa, and about 89 island countries (the order to visit these is probably just going to have to be left to taste).
+<br>
+These two big components will turn out to have some pretty different features.
+<br>
+
+<br>
+A Hamiltonian Path Through the Americas
+<br>
+The Americas look like this in graph form:
+<br>
+AMERICAS_GRAPH.pdf
+<br>
+We can see that it is almost a line, going from North America to Central America, and then South America is basically a wheel with a spoke at Brazil.
+<br>
+Looking at the graph like this, it is not necessarily easy to tell whether there is a Hamiltonian path. We can tell Mathematica to find one for us with the command
+<br>
+path = FindHamiltonianPath[Americas]
+<br>
+This very quickly shows that there is in fact a path through the Americas, and we can plot it like this:
+<br>
+pos = CountryData[#, "CenterCoordinates"] & /@ path
+GeoGraphics[{Thick, Red, GeoPath[pos]]}]
+<br>
+AMERICAS_PATH.pdf
+<br>
+(Aside, the Hamiltonian path problem is considered NP-hard. That basically means that there's no good way for us to find a Hamiltonian path other than trying oout paths until we get one that reaches all of the vertices, or we run out of paths to try. Some people take NP-hardness to mean that it is impossible to solve these types of problems, but it means something a little more subtle than that. At least for small cases like the ones we're trying, it isn't too much of a hurdle.)
+<br>
+Basically, we go from Canada to Columbia along a straight line, then go clockwise round South America until we hit Ecuador. Probably not how you would actually take a tour of South America, but it definitely works.
+<br>
+This was a pretty simple, straightforward kind of answer. It turns out to be a lot more complicated for the other hemisphere.
+<br>
+
+<br>
+<h1> No Hamiltonian Path through Africa/Europe/Asia </h1>
+<br>
+
+Performing the same incantations as earlier, we can try making the graph for the Eastern Hemisphere.
+The output looks like this:
+<br>
+EASTERNHEMISPHERE.pdf
+<br>
+This is a lot more complicated than the picture for the Americas. But, the command to find the Hamiltonian path is basically the same:
+<br>
+FindHamiltonianPath[AfroEurAsia]
+<br>
+After thinking for a while, Mathematica will sputter and say that there is no Hamiltonian path that goes through all of these countries.
+<br>
+I think the most compelling reason this might be the case is that if we remove Russia from this graph, then Finland, Norway and Sweden are split off from the rest of the hemisphere, and that means that essentially, we have to either start or end in one of these countries. That already puts a lot of restrictions on the path; if we start in the Nordic countries, then after exiting through Russia, we would have to go through all of Europe, come back, and then go through Asia and Africa. This is apparently impossible.
+<br>
+Fortunately, the Hamiltonian path model, though the most natural, is not the only way we might consider modeling this problem. Let's think about some other ones.
+<br>
+
+<br>
+<h1> Shortest Tour through the Eastern Hemisphere </h1>
+<br>
+
+The Hamiltonian path problem asks us to find a way to list the vertices with two important restraints, that are opposed with one another: each vertex is listed exactly once, and consecutive vertices are connected by an edge. These two constraints together are apparently too restrictive to make the problem solvable. So, we need to relax these restrictions. We'll start by trying to relax the first restriction.
+<br>
+We can imagine forgetting about whether or not countries border each other. To make the problem interesting then, we might instead focus on how far apart the countries are from one another. The shortest tour problem here is to find the ordering of the vertices that minimizes the total distance you have to travel to go through the vertices in order.
+<br>
+The way we do this in Mathematica is with the following:
+<br>
+pos = CountryData[#, "CenterCoordinates"] & /@ AfroEurAsia;
+FindShortestTour[pos, 132, 83] (*132 there just means that we start in South Africa, and 82 means we should end in Pourtugal.*)
+<br>
+SHORTEST_TOUR.pdf
+<br>
+This is nice! We have found a path going through all of the countries in the hemisphere, and adjacent countries are pretty close together. Plus, it was pretty easy to make!
+<br>
+There is one noticable feature about this path though. Looking at the path starting in South Africa, we migrate up north to Yemen, and then we go through all of Asia before doubling back through the Middle East and back to Africa! In total, the path enters into Africa 3 separate times.
+<br>
+That is, this shortest path is actually folded in on itself, so that for each continent, we actually enter and leave multiple times. This might not be too big of an issue, since adjacent countries still are close to each other, but we might want to devote specific periods of reading to particular continents.
+<br>
+The reason this happens in this model is that the distance function doesn't care about the distance between nonadjacent countries in the path; this simplification allows us to route paths much more easily, which is why there is a shortest tour, but no Hamiltonian path, but it apparently ignores some interesting geometric information as well. We'll try another model to see how well that captures this geometry.
+<br>
+
+<br>
+
+<br>
+<h1> Backtracking Hamiltonian Path through the Eastern Hemisphere </h1>
+<br>
+Instead of relaxing the condition that subsequent vertices have to be adjacent to one another, we can try relaxing the condition that we are only allowed to visit each vertex exactly once.
+<br>
+Again, completely ignoring this constraint is not very interesting. If we could repeat vertices as much as we liked, we could just go through the countries in any random order, and then if we get stuck, we can always backtrack to the start, and try again.
+<br>
+The issue is that the more we backtrack, the greater the distance we'll have to travel in order to visit all the countries. To balance these concerns, we can say that we will allow backtracking, but only in some limited form.
+<br>
+One interesting way to limit backtracking is to say that we are allowed to repeat a vertex in the list, but only if the next vertex we visit is new. That is, we can backtrack to go over one vertex again, but we can't backtrack over multiple vertices before visiting a new one.
+<br>
+This question is essentially equivalent to finding a Hamiltonian path, but in a slightly different graph, called the squared graph of our original graph. (The terminology comes from the fact that graphs are connected to linear algebra by a so-called adjacency matrix. The adjacency matrix of the squared graph is the square of the original graph in some sense.)
+<br>
+We define the square graph to be the graph where two vertices are connected if they were connected in the original graph, or if there is some third vertex that is connected to both of them in the original graph. This is how we model backtracking.
+<br>
+In Mathematica, the square graph is constructed like this:
+edgeList[x_] := (UndirectedEdge[x, #] &) /@ AdjacencyList[subgraph, x, 2]
+edges =  DeleteDuplicates[Flatten[edgeList/@AfroEurAsia,1]];
+graphSquared = SimpleGraph[Graph[AfroEurAsia, edges]];
+<br>
+SQUAREDGRAPH.PDF
+<br>
+As an aside, it is a theorem that the square of any graph has a Hamiltonian cycle (which implies the existence of several Hamiltonian paths), as long as the graph is 2-connected and has more than 3 vertices. It turns out that this does not apply to our situation because the graph is not 2-connected (removing Russia disconnects the graph), but it says morally that finding Hamiltonian cycles becomes a lot easier if you allow even a little bit of backtracking.
+<br>
+We can now try to find a Hamiltonian path in this graph. Doing what we did in previous iterations, we run
+<br>
+FindHamiltonianPath[subgraphSquared]
+<br>
+Unfortunately, this command will probably never complete. It turns out that the squared graph has a lot more edges than the graph we started with (about 100x more). Mathematica's built in Hamiltonian path finder is not very good, so it fails to handle this graph.
+<br>
+
+To settle this issue, we need to use some heavier tools. There is a command to save the list of edges to a file:
+<br>
+Save["edgelist.m", edges];
+<br>
+We can now open the file in python.
+<br>
+There are probably specialized Hamiltonian path solvers out there that would gobble this problem up in no time. But I wanted to do some stuff from scratch, so I opted for a more general purpose integer linear programming solver called SCIP, and a python wrapper for the code called pyscipopt.
+<br>
+This solver lets you specify a problem in python, and then it applies a bunch of clever optimization tricks to solve the problem you give it. I might go over how to write this code later, but for now, it is on my Github, along with all of the relevant data.
+<br>
+This solver takes a minute to ponder the Hamiltonian path problem for this case, and eventually, it finds the desired Hamiltonian path. The results of this can be seen here:
+<br>
+2PATH2.pdf
+<br>
+This path is a lot uglier than the shortest tour path in the previous section because it has a lot more self-crossings. This makes sense: self-crossings in paths are bad for the distance travelled by the path, but the Hamiltonian path formailism completely ignores this.
+<br>
+It is likely possible to untangle some of these crossings, but the thing I want to focus on is the fact that this path does have the property that once it leaves a continent, it stays out of that continent. Essentially, because the borders between continents are pretty narrow, it's hard to route a path that goes both in and out of the continent, so the solver figures out that it has to go over every country in a given continent before moving to the next one. This is another way of ordering countries that is also interesting.
+<br>
+To summarize, we had a problem, and tried one way to formalize that problem mathematically. When that problem turned out to be unsolvable, we relaxed our restrictions and made up a different formalism that did have a solution. We identified a problem with that formalism, and made some corrections. All in all, with the help of a bunch of mathematical tools, the procedure was essentially painless from beginning to end.
+<br>
+There are some other formalisms that I tried, that captured other aspects of the problem that I found interesting, but this is already longer than anyone will read anyways.
+</body>
+</html>
